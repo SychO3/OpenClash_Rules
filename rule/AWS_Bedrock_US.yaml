@@ -1,0 +1,2 @@
+payload:
+  - DOMAIN-REGEX,^bedrock(-runtime|-agent-runtime)?\.us-.+\.amazonaws\.com$
