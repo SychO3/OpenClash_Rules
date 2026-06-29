@@ -1,0 +1,5 @@
+payload:
+  - DOMAIN-KEYWORD,bedrock-runtime
+  - DOMAIN-KEYWORD,bedrock-agent-runtime
+  - DOMAIN-KEYWORD,bedrock.
+  - DOMAIN-SUFFIX,bedrock.aws.dev
