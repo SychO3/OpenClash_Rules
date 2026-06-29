@@ -63,13 +63,9 @@ jobs:
               done
           }
 
-          # Clean existing and re-download
-          rm -rf cfg rule
-          mkdir -p cfg rule
-
-          # Sync cfg
-          sync_dir "cfg" "cfg"
-          sync_subdir "cfg" "cfg"
+          # Clean existing and re-download (rule only, cfg is user-maintained)
+          rm -rf rule
+          mkdir -p rule
 
           # Sync rule
           sync_dir "rule" "rule"
@@ -79,7 +75,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add cfg/ rule/
+          git add rule/
           if ! git diff --cached --quiet; then
             git commit -m "Sync upstream rules at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             git push
