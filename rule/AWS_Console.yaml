@@ -1,0 +1,7 @@
+payload:
+  - DOMAIN-SUFFIX,signin.aws
+  - DOMAIN-SUFFIX,awsapps.com
+  - DOMAIN-SUFFIX,aws.amazon.com
+  - DOMAIN-SUFFIX,awsstatic.com
+  - DOMAIN-SUFFIX,aws.dev
+  - DOMAIN-SUFFIX,amazoncognito.com
