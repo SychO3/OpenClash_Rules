@@ -1,0 +1,88 @@
+name: Sync from upstream mirror
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync cfg and rule from upstream
+        run: |
+          BASE="https://api.asailor.org/Custom_OpenClash_Rules/main"
+
+          sync_dir() {
+            local remote_path="$1"
+            local local_path="$2"
+            mkdir -p "$local_path"
+
+            # Parse directory index for file links (skip ../ and DIR entries)
+            curl -sf "$BASE/$remote_path/" | \
+              grep -oP '(?<=href=")[^"]+(?=")' | \
+              grep -v '^\.\.\/$' | \
+              grep -v '/$' | \
+              while read -r file; do
+                local decoded
+                decoded=$(printf '%b' "$(echo "$file" | sed 's/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')")
+                curl -sf "$BASE/$remote_path/$file" -o "$local_path/$decoded" && \
+                  echo "OK $local_path/$decoded" || \
+                  echo "FAIL $local_path/$decoded"
+              done
+          }
+
+          sync_subdir() {
+            local remote_path="$1"
+            local local_path="$2"
+            mkdir -p "$local_path"
+
+            # Get subdirectories
+            curl -sf "$BASE/$remote_path/" | \
+              grep -oP '(?<=href=")[^"]+(?=")' | \
+              grep -v '^\.\.\/$' | \
+              grep '/$' | \
+              while read -r subdir; do
+                local decoded
+                decoded=$(printf '%b' "$(echo "$subdir" | sed 's/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g' | sed 's/\/$//')")
+                sync_dir "$remote_path/$subdir" "$local_path/$decoded"
+                # One level deeper for nested subdirs
+                curl -sf "$BASE/$remote_path/$subdir" | \
+                  grep -oP '(?<=href=")[^"]+(?=")' | \
+                  grep -v '^\.\.\/$' | \
+                  grep '/$' | \
+                  while read -r nested; do
+                    local nested_decoded
+                    nested_decoded=$(printf '%b' "$(echo "$nested" | sed 's/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g' | sed 's/\/$//')")
+                    mkdir -p "$local_path/$decoded/$nested_decoded"
+                    sync_dir "$remote_path/${subdir}${nested}" "$local_path/$decoded/$nested_decoded"
+                  done
+              done
+          }
+
+          # Clean existing and re-download
+          rm -rf cfg rule
+          mkdir -p cfg rule
+
+          # Sync cfg
+          sync_dir "cfg" "cfg"
+          sync_subdir "cfg" "cfg"
+
+          # Sync rule
+          sync_dir "rule" "rule"
+          sync_subdir "rule" "rule"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cfg/ rule/
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync upstream rules at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push
+          else
+            echo "No changes."
+          fi
