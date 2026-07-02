@@ -63,6 +63,9 @@ jobs:
           sync_dir "rule" "rule"
           sync_subdir "rule" "rule"
 
+      - name: Install whois
+        run: sudo apt-get update && sudo apt-get install -y whois
+
       - name: Update Telegram DC rules
         run: |
           get_prefixes() {
