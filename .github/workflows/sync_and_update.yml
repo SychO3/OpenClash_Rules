@@ -58,10 +58,24 @@ jobs:
               done
           }
 
-          rm -rf rule
-          mkdir -p rule
-          sync_dir "rule" "rule"
-          sync_subdir "rule" "rule"
+          # Download into a temp dir first; only replace if the sync looks complete.
+          # This protects existing rules if upstream is unreachable (e.g. Cloudflare
+          # blocks GitHub runner IPs) — a failed/empty download must never wipe rule/.
+          TMP="$(mktemp -d)"
+          sync_dir "rule" "$TMP"
+          sync_subdir "rule" "$TMP"
+
+          count=$(find "$TMP" -type f | wc -l)
+          echo "Downloaded $count files from upstream."
+          if [ "$count" -lt 20 ]; then
+            echo "::warning::Upstream sync incomplete ($count files) — keeping existing rule/ untouched."
+          else
+            # Overwrite upstream-managed files; keep our custom rules (Kiro, AWS_*,
+            # Claude_Extra, OpenAI_Extra, Telegram_*) which are not in the mirror.
+            cp -rf "$TMP"/. rule/
+            echo "Synced $count upstream files into rule/."
+          fi
+          rm -rf "$TMP"
 
       - name: Install whois
         run: sudo apt-get update && sudo apt-get install -y whois
